@@ -14,7 +14,7 @@ local TeleportService = ReturnService("TeleportService")
 local TweenService = ReturnService("TweenService")
 local HttpService = ReturnService("HttpService")
 local Workspase = ReturnService("Workspace")
-local Players = ReturnService("Players")
+local Players = cloneref(game:GetService("Players"))
 
 local Particles = workspace:WaitForChild("Particles")
 local Monsters = workspace:WaitForChild("Monsters")
