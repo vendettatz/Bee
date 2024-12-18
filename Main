@@ -1,0 +1,163 @@
+repeat task.wait() until game:IsLoaded()
+getgenv().ViciousBeeSettings.ScriptLoaded = true
+
+local function ReturnService(Name)
+	local Success = pcall(function()
+		return cloneref(game:GetService(Name))
+	end)
+	if not Success then
+		return game:GetService(Name)
+	end
+end
+
+local TeleportService = ReturnService("TeleportService")
+local TweenService = ReturnService("TweenService")
+local HttpService = ReturnService("HttpService")
+local Workspase = ReturnService("Workspace")
+local Players = ReturnService("Players")
+
+local Particles = Workspase:WaitForChild("Particles")
+local Monsters = Workspase:WaitForChild("Monsters")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Characer or LocalPlayer.CharacterAdded:Wait()
+
+local RootPart = Character.PrimaryPart or Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid") or Character:FindFirstChildOfClass("Humanoid")
+
+local Hour = os.date("!*t").hour
+local PlaceId = game.PlaceId
+
+local Deleted = false
+local AllIds = {}
+local Found = ""
+
+local ServersFile = pcall(function()
+	AllIds = HttpService:JSONDecode(readfile("NotSameServers.json"))
+end)
+if not ServersFile then
+	table.insert(AllIds, Hour)
+	writefile("NotSameServers.json", HttpService:JSONEncode(AllIds))
+end
+
+local function CheckBeeLevel(Name)
+	local Level = tonumber(str:match("%d+"))
+	if Level >= ViciousBeeMin and Level <= ViciousBeeMax then
+		return true
+	else
+		return false
+	end
+end
+
+local function CheckForVicious()
+	for Index, Monster in ipairs(Monsters:GetChildren()) do
+		if string.find(Monster.Name, "Vicious Bee") then
+			if CheckBeeLevel(Monster.Name) then
+				return {true, Monster}
+			end
+		end
+	end
+	return {false}
+end
+
+local function TeleportToBee(ViciousBee)
+	local Movement = getgenv().ViciousBeeSettings.Movement
+	if Movement == "Teleport" then
+		RootPart.CFrame = ViciousBee.PrimaryPart.CFrame
+	elseif Movement == "Tween" then
+		TweenService:Create(
+			RootPart,
+			TweenInfo.new(1, Enum.EasingStyle.Linear),
+			{CFrame = ViciousBee.PrimaryPart.CFrame}
+		):Play()
+	elseif Movement == "Walk" then
+		Humanoid:MoveTo(ViciousBee.PrimaryPart.Position)
+	end
+end
+
+local function TeleportFunction()
+	local Worked = true
+	local Site
+
+	if Found ~= "" then
+		local Success, NewSite = pcall(function()
+			return HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'.. PlaceId.. '/servers/Public?sortOrder=Asc&limit=100'))
+		end)
+		if Success and NewSite then
+			Site = NewSite
+		else
+			Worked = false
+		end
+	else
+		local Success, NewSite = pcall(function()
+			return HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'.. PlaceId.. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. Found))
+		end)
+		if Success and NewSite then
+			Site = NewSite
+		else
+			Worked = false
+		end
+	end
+	if not Worked then
+		return "Couldn't get servers"
+	end
+
+	local NewId = ""
+	if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
+		Found = Site.nextPageCursor
+	end
+	local Number = 0
+	for Index, Variable in pairs(Site.data) do
+		local Possible = true
+		NewId = tostring(Variable.id)
+		if tonumber(Variable.maxPlayers) > tonumber(Variable.playing) then
+			for Index, Existing in pairs(AllIds) do
+				if Number ~= 0 then
+					if NewId == tostring(Existing) then
+						Possible = false
+					end
+				else
+					if tonumber(Hour) ~= tonumber(Existing) then
+						local Delete = pcall(function()
+							delfile("NotSameServers.json")
+							AllIds = {}
+							table.insert(AllIds, Hour)
+						end)
+					end
+				end
+				Number = Number + 1
+			end
+			if Possible then
+				table.insert(AllIds, NewId)
+				pcall(function()
+					writefile("NotSameServers.json", HttpService:JSONEncode(AllIds))
+					TeleportService:TeleportToPlaceInstance(PlaceId, NewId, LocalPlayer)
+				end)
+				task.wait(2.86)
+			end
+		end
+	end
+end
+
+function ServerHop()
+	coroutine.wrap(function()
+		while true do
+			task.wait(0.48)
+			pcall(function()
+				TPReturner()
+				if Found ~= "" then
+					TPReturner()
+				end
+			end)
+		end
+	end)()
+end
+
+local function Main()
+	local Returned = CheckForVicious()
+	if Returned[1] then
+		TeleportToBee(Returned[2])
+	else
+		ServerHop()
+	end
+end
