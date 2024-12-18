@@ -22,7 +22,7 @@ local Particles = Workspase:WaitForChild("Particles")
 local Monsters = Workspase:WaitForChild("Monsters")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Characer or LocalPlayer.CharacterAdded:Wait()
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 local RootPart = Character.PrimaryPart or Character:WaitForChild("HumanoidRootPart")
 local Humanoid = Character:WaitForChild("Humanoid") or Character:FindFirstChildOfClass("Humanoid")
