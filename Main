@@ -3,7 +3,7 @@ getgenv().ViciousBeeSettings.ScriptLoaded = true
 
 local function ReturnService(Name)
 	local Success, Service = pcall(function()
-		return game:GetService(Name)
+		return cloneref(game:GetService(Name))
 	end)
 	if not Success then
 		return game:GetService(Name)
@@ -15,11 +15,11 @@ end
 local TeleportService = ReturnService("TeleportService")
 local TweenService = ReturnService("TweenService")
 local HttpService = ReturnService("HttpService")
-local Workspase = ReturnService("Workspace")
-local Players = ReturnService("Players")
+local Workspase = workspace
+local Players = game.Players
 
-local Particles = workspace:WaitForChild("Particles")
-local Monsters = workspace:WaitForChild("Monsters")
+local Particles = Workspase:WaitForChild("Particles")
+local Monsters = Workspase:WaitForChild("Monsters")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Characer or LocalPlayer.CharacterAdded:Wait()
