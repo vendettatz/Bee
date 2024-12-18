@@ -16,8 +16,8 @@ local HttpService = ReturnService("HttpService")
 local Workspase = ReturnService("Workspace")
 local Players = ReturnService("Players")
 
-local Particles = Workspase:WaitForChild("Particles")
-local Monsters = Workspase:WaitForChild("Monsters")
+local Particles = workspace:WaitForChild("Particles")
+local Monsters = workspace:WaitForChild("Monsters")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Characer or LocalPlayer.CharacterAdded:Wait()
