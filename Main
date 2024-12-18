@@ -76,6 +76,7 @@ local function TeleportFunction()
 		if Server.playing < Server.maxPlayers and not table.find(AllIds, Server.id) then
 			table.insert(AllIds, Server.id)
 			writefile("NotSameServers.json", HttpService:JSONEncode(AllIds))
+			queue_on_teleport("loadstring(game:HttpGet('https://raw.githubusercontent.com/vendettatz/Bee/1d5c207d465cd16bbb6e8fbaa5727d7995ae1dd6/Main'))()")
 			TeleportService:TeleportToPlaceInstance(PlaceId, Server.id, LocalPlayer)
 			return
 		end
