@@ -1,36 +1,28 @@
 repeat task.wait() until game:IsLoaded()
-getgenv().ViciousBeeSettings.ScriptLoaded = true
+getgenv().ViciousBeeSettings = {
+	ScriptLoaded = true,
+	Movement = "Teleport",
+	ViciousBeeMin = 1,
+	ViciousBeeMax = 7
+}
 
-local function ReturnService(Name)
-	local Success, Service = pcall(function()
-		return cloneref(game:GetService(Name))
-	end)
-	if not Success then
-		return game:GetService(Name)
-	else
-		return Service
-	end
-end
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
-local TeleportService = ReturnService("TeleportService")
-local TweenService = ReturnService("TweenService")
-local HttpService = ReturnService("HttpService")
-local Workspase = workspace
-local Players = game.Players
-
-local Particles = Workspase:WaitForChild("Particles")
-local Monsters = Workspase:WaitForChild("Monsters")
+local Particles = Workspace:WaitForChild("Particles")
+local Monsters = Workspace:WaitForChild("Monsters")
 
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local RootPart = Character.PrimaryPart or Character:WaitForChild("HumanoidRootPart")
-local Humanoid = Character:WaitForChild("Humanoid") or Character:FindFirstChildOfClass("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
 
 local Hour = os.date("!*t").hour
 local PlaceId = game.PlaceId
-
-local Deleted = false
 local AllIds = {}
 local Found = ""
 
@@ -43,114 +35,60 @@ if not ServersFile then
 end
 
 local function CheckBeeLevel(Name)
-	local Level = tonumber(str:match("%d+"))
-	if Level >= ViciousBeeMin and Level <= ViciousBeeMax then
-		return true
-	else
-		return false
-	end
+	local Level = tonumber(Name:match("%d+"))
+	return Level and Level >= getgenv().ViciousBeeSettings.ViciousBeeMin and Level <= getgenv().ViciousBeeSettings.ViciousBeeMax
 end
 
 local function CheckForVicious()
-	for Index, Monster in ipairs(Monsters:GetChildren()) do
-		if string.find(Monster.Name, "Vicious Bee") then
-			if CheckBeeLevel(Monster.Name) then
-				return {true, Monster}
-			end
+	for _, Monster in ipairs(Monsters:GetChildren()) do
+		if string.find(Monster.Name, "Vicious Bee") and CheckBeeLevel(Monster.Name) then
+			return {true, Monster}
 		end
 	end
 	return {false}
 end
 
 local function TeleportToBee(ViciousBee)
-	local Movement = getgenv().ViciousBeeSettings.Movement
-	if Movement == "Teleport" then
+	if getgenv().ViciousBeeSettings.Movement == "Teleport" then
 		RootPart.CFrame = ViciousBee.PrimaryPart.CFrame
-	elseif Movement == "Tween" then
+	elseif getgenv().ViciousBeeSettings.Movement == "Tween" then
 		TweenService:Create(
 			RootPart,
 			TweenInfo.new(1, Enum.EasingStyle.Linear),
 			{CFrame = ViciousBee.PrimaryPart.CFrame}
 		):Play()
-	elseif Movement == "Walk" then
+	elseif getgenv().ViciousBeeSettings.Movement == "Walk" then
 		Humanoid:MoveTo(ViciousBee.PrimaryPart.Position)
 	end
 end
 
 local function TeleportFunction()
-	local Worked = true
-	local Site
+	local Success, Site = pcall(function()
+		local Url = 'https://games.roblox.com/v1/games/' .. PlaceId .. '/servers/Public?sortOrder=Asc&limit=100'
+		if Found ~= "" then Url = Url .. '&cursor=' .. Found end
+		return HttpService:JSONDecode(game:HttpGet(Url))
+	end)
+	if not Success or not Site then return "Couldn't get servers" end
 
-	if Found ~= "" then
-		local Success, NewSite = pcall(function()
-			return HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'.. PlaceId.. '/servers/Public?sortOrder=Asc&limit=100'))
-		end)
-		if Success and NewSite then
-			Site = NewSite
-		else
-			Worked = false
-		end
-	else
-		local Success, NewSite = pcall(function()
-			return HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/'.. PlaceId.. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. Found))
-		end)
-		if Success and NewSite then
-			Site = NewSite
-		else
-			Worked = false
-		end
-	end
-	if not Worked then
-		return "Couldn't get servers"
-	end
+	if Site.nextPageCursor then Found = Site.nextPageCursor end
 
-	local NewId = ""
-	if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-		Found = Site.nextPageCursor
-	end
-	local Number = 0
-	for Index, Variable in pairs(Site.data) do
-		local Possible = true
-		NewId = tostring(Variable.id)
-		if tonumber(Variable.maxPlayers) > tonumber(Variable.playing) then
-			for Index, Existing in pairs(AllIds) do
-				if Number ~= 0 then
-					if NewId == tostring(Existing) then
-						Possible = false
-					end
-				else
-					if tonumber(Hour) ~= tonumber(Existing) then
-						local Delete = pcall(function()
-							delfile("NotSameServers.json")
-							AllIds = {}
-							table.insert(AllIds, Hour)
-						end)
-					end
-				end
-				Number = Number + 1
-			end
-			if Possible then
-				table.insert(AllIds, NewId)
-				pcall(function()
-					writefile("NotSameServers.json", HttpService:JSONEncode(AllIds))
-					TeleportService:TeleportToPlaceInstance(PlaceId, NewId, LocalPlayer)
-				end)
-				task.wait(2.86)
-			end
+	for _, Server in pairs(Site.data) do
+		if Server.playing < Server.maxPlayers and not table.find(AllIds, Server.id) then
+			table.insert(AllIds, Server.id)
+			writefile("NotSameServers.json", HttpService:JSONEncode(AllIds))
+			TeleportService:TeleportToPlaceInstance(PlaceId, Server.id, LocalPlayer)
+			return
 		end
 	end
 end
 
 function ServerHop()
 	coroutine.wrap(function()
-		while true do
+		local timeout = os.time() + 60
+		while os.time() < timeout do
 			task.wait(0.48)
-			pcall(function()
-				TPReturner()
-				if Found ~= "" then
-					TPReturner()
-				end
-			end)
+			local success, result = pcall(TeleportFunction)
+			if success and result ~= "Couldn't get servers" then break end
 		end
 	end)()
 end
@@ -163,3 +101,5 @@ local function Main()
 		ServerHop()
 	end
 end
+
+Main()
