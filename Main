@@ -3,7 +3,7 @@ getgenv().ViciousBeeSettings.ScriptLoaded = true
 
 local function ReturnService(Name)
 	local Success, Service = pcall(function()
-		return cloneref(game:GetService(Name))
+		return game:GetService(Name)
 	end)
 	if not Success then
 		return game:GetService(Name)
